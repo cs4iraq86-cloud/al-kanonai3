@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة سجل التعهدات والصادر</title>
+    <!-- استدعاء خط تجوال من جوجل لتحسين المظهر العربي الرسمي -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <!-- استدعاء Tailwind CSS للتصميم العصري -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- استدعاء أيقونات FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Tajawal', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            600: '#1e3a8a',
+                            700: '#1e40af',
+                            800: '#172554',
+                            900: '#0f172a',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#d97706',
+                            600: '#b45309',
+                        },
+                        slate: {
+                            850: '#1e293b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* تخصيص شريط التمرير وإعدادات الطباعة */
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f1f5f9;
+        }
+        
+        /* تنسيقات خاصة بالطباعة فقط على ورق A4 */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+            body * {
+                visibility: hidden;
+            }
+            #printArea, #printArea * {
+                visibility: visible;
+            }
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 0;
+                background: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- الشريط العلوي (شريط عنوان النظام المكتبي وحالة المزامنة) -->
+    <header class="bg-primary-900 text-white shadow-lg border-b-2 border-gold-500 sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-primary-700 border border-gold-400/40 p-2.5 rounded-xl shadow-inner">
+                    <i class="fa-solid fa-file-signature text-xl text-gold-400"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-wide">نظام سجل التعهدات الرسمي</h1>
+                        <span id="workspaceBadge" class="bg-primary-800 text-gold-400 border border-gold-500/30 text-xs font-bold px-2.5 py-0.5 rounded-full" title="رمز المؤسسة / غرفة العمل المشتركة">
+                            غرفة: default
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-0.5 flex items-center gap-2">
+                        <span>المزامنة الشبكية المركزية للحواسيب</span>
+                        <span>•</span>
+                        <span id="headerTerminalName" class="text-gold-400 font-medium">حاسبة غير مسماة</span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- مؤشر حالة المزامنة اللحظية -->
+                <div id="syncStatusBox" class="flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
+                    <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="syncText" class="font-medium text-slate-200">جاري الاتصال بالسحابة...</span>
+                </div>
+
+                <!-- زر إعدادات النظام والشبكة -->
+                <button onclick="openSettingsModal()" class="flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white px-3 py-2 rounded-xl text-sm transition border border-primary-600 shadow-sm" title="إعدادات الترقيم والربط الشبكي">
+                    <i class="fa-solid fa-network-wired text-gold-400"></i>
+                    <span class="hidden sm:inline">إعدادات الربط والترقيم</span>
+                </button>
+                <!-- زر تصدير Excel -->
+                <button onclick="exportToCSV()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition shadow-sm">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span class="hidden sm:inline">تصدير Excel</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 no-print">
+        
+        <!-- بطاقات الإحصائيات السريعة -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">إجمالي التعهدات المركزية</p>
+                    <p id="statTotal" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-gold-500/30 flex items-center justify-between relative overflow-hidden">
+                <div>
+                    <p class="text-sm font-bold text-primary-800">رقم الصادر القادم (المركزي)</p>
+                    <p id="statNextNumber" class="text-2xl font-extrabold text-gold-600 mt-1" dir="ltr">2026 / 1</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5" id="statLastIssuedHint">آخر صادر: لا يوجد</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-gold-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-hashtag"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">تعهدات اليوم</p>
+                    <p id="statToday" class="text-2xl font-extrabold text-emerald-600 mt-1">0</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-calendar-day"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/90 flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-500">الأكثر تكراراً</p>
+                    <p id="statTopType" class="text-sm font-bold text-slate-700 mt-1.5 line-clamp-2 max-w-[160px]">لا يوجد</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم الإدخال وجدول السجلات -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- نموذج إضافة / تعديل تعهد (العمود الأيمن) -->
+            <div class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden">
+                <div class="bg-primary-900 text-white px-6 py-4 border-b border-primary-800 flex items-center justify-between">
+                    <h2 id="formTitle" class="font-bold text-base flex items-center gap-2">
+                        <i class="fa-solid fa-plus-circle text-gold-400"></i>
+                        <span>تسجيل تعهد جديد</span>
+                    </h2>
+                    <span id="editBadge" class="hidden bg-gold-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">وضع التعديل</span>
+                </div>
+
+                <form id="pledgeForm" class="p-6 space-y-4">
+                    <input type="hidden" id="editId" value="">
+                    
+                    <!-- حقل رقم الصادر التسلسلي المركزي -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                            رقم صادر التعهد <span class="text-xs font-normal text-primary-700">(تسلسلي مركزي موحد)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="serialNumber" readonly
+                                class="w-full bg-amber-50/70 border border-gold-500/40 text-primary-900 font-extrabold text-lg text-center rounded-xl px-4 py-2.5 focus:outline-none cursor-not-allowed" dir="ltr">
+                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gold-600">
+                                <i class="fa-solid fa-shield-halved text-sm"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- حقل اسم المتعهد -->
+                    <div>
+                        <label for="personName" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            الاسم الكامل للمتعهد <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="personName" required placeholder="أدخل الاسم الرباعي أو اسم الجهة..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-primary-600 focus:border-primary-600 transition">
+                    </div>
+
+                    <!-- حقل نوع التعهد مع اقتراحات سريعة -->
+                    <div>
+                        <label for="pledgeType" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            نوع التعهد <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="pledgeType" list="pledgeTypesList" required placeholder="اختر من القائمة أو اكتب نوع التعهد..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-primary-600 focus:border-primary-600 transition">
+                        <datalist id="pledgeTypesList">
+                            <!-- يتم تعبئتها ديناميكياً من الإعدادات -->
+                        </datalist>
+                    </div>
+
+                    <!-- حقل التاريخ واسم الحاسبة المدخلة -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label for="pledgeDate" class="block text-sm font-bold text-slate-700 mb-1.5">
+                                تاريخ التعهد <span class="text-red-500">*</span>
+                            </label>
+                            <input type="date" id="pledgeDate" required
+                                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-primary-600 focus:border-primary-600 transition">
+                        </div>
+                        <div>
+                            <label for="terminalInput" class="block text-sm font-bold text-slate-700 mb-1.5">
+                                الحاسبة / الموظف
+                            </label>
+                            <input type="text" id="terminalInput" placeholder="مثال: حاسبة 1"
+                                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-primary-600 focus:border-primary-600 transition">
+                        </div>
+                    </div>
+
+                    <!-- حقل الملاحظات / نص التعهد المختصر -->
+                    <div>
+                        <label for="notes" class="block text-sm font-bold text-slate-700 mb-1.5">
+                            تفاصيل التعهد / ملاحظات إضافية
+                        </label>
+                        <textarea id="notes" rows="3" placeholder="اكتب تفاصيل إضافية، رقم الهوية، رقم الهاتف..."
+                            class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-primary-600 focus:border-primary-600 transition"></textarea>
+                    </div>
+
+                    <!-- أزرار الحفظ والإلغاء -->
+                    <div class="pt-2 flex gap-2">
+                        <button type="submit" id="submitBtn"
+                            class="flex-1 bg-primary-700 hover:bg-primary-800 text-white font-bold py-3 px-4 rounded-xl shadow-md shadow-primary-700/20 transition flex items-center justify-center gap-2 disabled:opacity-50">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>حفظ وإصدار الرقم</span>
+                        </button>
+                        <button type="button" id="cancelEditBtn" onclick="resetForm()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl transition">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- جدول عرض السجلات والبحث (العمود الأيسر) -->
+            <div class="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden flex flex-col">
+                
+                <!-- شريط البحث والفلترة -->
+                <div class="p-5 border-b border-slate-200 bg-slate-50 space-y-3 sm:space-y-0 sm:flex sm:items-center sm:justify-between gap-3">
+                    <div class="relative flex-1">
+                        <input type="text" id="searchInput" oninput="renderTable()" placeholder="ابحث بالاسم، رقم الصادر، نوع التعهد، أو اسم الحاسبة..."
+                            class="w-full bg-white border border-slate-300 rounded-xl pr-10 pl-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-600 focus:border-primary-600 transition">
+                        <div class="absolute inset-y-0 right-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="filterDate" onchange="renderTable()" title="تصفية حسب التاريخ"
+                            class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-primary-600">
+                        <button onclick="clearFilters()" title="إعادة ضبط البحث"
+                            class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-2.5 rounded-xl text-sm transition">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- الجدول المتجاوب -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 text-xs uppercase border-b border-slate-200">
+                                <th class="py-3.5 px-4 font-bold">رقم الصادر</th>
+                                <th class="py-3.5 px-4 font-bold">اسم المتعهد</th>
+                                <th class="py-3.5 px-4 font-bold">نوع التعهد</th>
+                                <th class="py-3.5 px-4 font-bold">التاريخ والمصدر</th>
+                                <th class="py-3.5 px-4 font-bold text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- يتم تعبئة الصفوف ديناميكياً عبر JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- رسالة عند عدم وجود بيانات -->
+                <div id="emptyState" class="hidden py-16 px-4 text-center">
+                    <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <h3 class="text-slate-700 font-bold text-base">لا توجد تعهدات مسجلة في هذه الغرفة حالياً</h3>
+                    <p class="text-slate-500 text-sm mt-1">أضف تعهداً جديداً أو تأكد من تطابق "رمز المؤسسة" في الإعدادات لربط الحواسيب.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- نافذة إعدادات الترقيم والربط الشبكي (Modal) -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div class="bg-primary-900 text-white px-6 py-4 flex items-center justify-between border-b border-gold-500/40">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-network-wired text-gold-400"></i>
+                    <span>إعدادات الربط الشبكي والترقيم المركزي</span>
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <!-- قسم الربط بين الحاسبات -->
+                <div class="bg-primary-50/70 border border-primary-200 rounded-xl p-4 space-y-3">
+                    <h4 class="font-bold text-sm text-primary-900 flex items-center gap-1.5">
+                        <i class="fa-solid fa-computers text-primary-700"></i>
+                        <span>ربط الحواسيب المتعددة (المزامنة المشتركة)</span>
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">رمز المؤسسة / غرفة العمل</label>
+                            <input type="text" id="settingWorkspaceId" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-center text-primary-800" dir="ltr" placeholder="default">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">اسم هذه الحاسبة / الموظف</label>
+                            <input type="text" id="settingTerminalName" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm" placeholder="مثال: حاسبة الاستعلامات 1">
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                        <i class="fa-solid fa-circle-info text-primary-600 ml-1"></i>
+                        لربط أكثر من حاسبة، أدخل نفس <strong>رمز المؤسسة</strong> في جميع الحواسيب وستتزامن الأرقام والسجلات لحظياً.
+                    </p>
+                </div>
+
+                <!-- قسم إعدادات الترويسة والعداد المركزي -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">اسم الدائرة / المؤسسة (يظهر في الطباعة)</label>
+                    <input type="text" id="settingOrgName" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm" placeholder="مثال: مديرية التربية / قسم الشؤون القانونية">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">بادئة الصادر / السنة</label>
+                        <input type="text" id="settingPrefix" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-center font-bold" dir="ltr" placeholder="2026">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">الرقم التسلسلي المركزي القادم</label>
+                        <input type="number" id="settingNextSeq" min="1" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-center font-bold text-gold-600" dir="ltr">
+                    </div>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-800 flex items-center justify-between">
+                    <span>معاينة شكل رقم الصادر المركزي:</span>
+                    <strong dir="ltr" id="previewFormat" class="text-sm font-extrabold">2026 / 1</strong>
+                </div>
+
+                <!-- إدارة قائمة أنواع التعهدات الجاهزة -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">أنواع التعهدات الجاهزة (سطر لكل نوع)</label>
+                    <textarea id="settingPledgeTypes" rows="4" class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs leading-relaxed"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
+                    <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold">إلغاء</button>
+                    <button onclick="saveSettings()" class="px-5 py-2 rounded-xl bg-primary-700 hover:bg-primary-800 text-white text-sm font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-check"></i>
+                        <span>حفظ وتطبيق على الشبكة</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد الحذف المخصصة (بديل confirm) -->
+    <div id="deleteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 text-center space-y-4">
+            <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">تأكيد حذف السجل من الشبكة</h3>
+            <p class="text-sm text-slate-500">سيتم حذف هذا التعهد من قاعدة البيانات المركزية وسيختفي من جميع الحاسبات المتصلة. هل أنت متأكد؟</p>
+            <div class="flex gap-3 pt-2">
+                <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm">تراجع</button>
+                <button id="confirmDeleteBtn" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm">نعم، احذف</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- إشعار منبثق (Toast Notification) -->
+    <div id="toast" class="fixed bottom-5 left-5 bg-primary-900 border border-gold-500/40 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 z-50 no-print max-w-md">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage" class="text-sm font-medium">تمت العملية بنجاح</span>
+    </div>
+
+    <!-- قالب الطباعة الرسمي (مخفي في الشاشة ويظهر عند طباعة وصل تعهد على ورق A4) -->
+    <div id="printArea" class="hidden">
+        <div class="border-2 border-black p-8 max-w-3xl mx-auto my-2">
+            <!-- ترويسة الورقة الرسمية -->
+            <div class="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+                <div class="text-right space-y-1">
+                    <p class="font-bold text-lg" id="printOrgName">الدائرة الإدارية / شعبة السجلات</p>
+                    <p class="text-sm">وحدة حفظ وتوثيق التعهدات</p>
+                </div>
+                <div class="text-left space-y-1">
+                    <p class="font-bold text-base">رقم الصادر: <span id="printSerial" dir="ltr" class="underline"></span></p>
+                    <p class="text-sm">التاريخ: <span id="printDate"></span></p>
+                </div>
+            </div>
+
+            <!-- عنوان الوثيقة -->
+            <div class="text-center my-8">
+                <h1 class="text-2xl font-extrabold underline decoration-2 underline-offset-8">سـنـد تـعـهـد خـطـي</h1>
+                <p class="text-sm mt-3 font-bold text-gray-800" id="printTypeBadge"></p>
+            </div>
+
+            <!-- نص التعهد -->
+            <div class="space-y-6 text-lg leading-loose text-justify my-8 px-2">
+                <p>
+                    أقر أنا الموقع أدناه السيد/ة: <strong id="printPersonName" class="px-2 border-b border-dotted border-black"></strong>،
+                    وبكامل أهليتي القانونية والشرعية، بأنني أتعهد بخصوص:
+                    <strong id="printPledgeType" class="px-1"></strong>.
+                </p>
+                <div id="printNotesSection" class="bg-gray-50 p-4 border border-gray-400 rounded text-base">
+                    <strong>التفاصيل والملاحظات:</strong>
+                    <p id="printNotes" class="mt-1"></p>
+                </div>
+                <p>
+                    وفي حال مخالفتي لما ورد أعلاه أتحمل كافة التبعات القانونية والإدارية المترتبة على ذلك، ولأجله وقعت.
+                </p>
+            </div>
+
+            <!-- التواقيع -->
+            <div class="grid grid-cols-2 gap-8 mt-16 pt-8 text-center">
+                <div class="space-y-14">
+                    <p class="font-bold">توقيع وبصمة المتعهد</p>
+                    <p class="text-sm text-gray-700">الاسم: <span id="printSignName"></span></p>
+                </div>
+                <div class="space-y-14">
+                    <p class="font-bold">الموظف المختص / الختم الرسمي</p>
+                    <p class="text-sm text-gray-700">التوقيع والختم</p>
+                </div>
+            </div>
+
+            <!-- تذييل صغير يوضح مصدر الإصدار -->
+            <div class="mt-12 pt-3 border-t border-gray-300 flex justify-between text-xs text-gray-500">
+                <span>رمز السجل: <span id="printWorkspace"></span></span>
+                <span>أُصدر بواسطة: <span id="printTerminal"></span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- منطق التطبيق والمزامنة السحابية عبر Firebase Firestore -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            updateDoc,
+            deleteDoc,
+            onSnapshot,
+            collection,
+            runTransaction
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- إعدادات البيئة و Firebase ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pledge-registry-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let app, auth, db;
+        let currentUser = null;
+        let unsubscribeRecords = null;
+        let unsubscribeConfig = null;
+        let isInitialLoad = true;
+
+        // الإعدادات الافتراضية للمؤسسة والأنواع الجاهزة
+        const DEFAULT_PLEDGE_TYPES = [
+            "تعهد خطي بعدم التعرض",
+            "تعهد التزام بالضوابط الإدارية والدوام الرسمي",
+            "تعهد إنجاز معاملة ومراجعة الدوائر المختصة",
+            "تعهد بإحضار المستمسكات الرسمية الناقصة",
+            "تعهد مالي وكفالة ضامنة",
+            "تعهد إخلاء طرف وتسليم عهدة"
+        ];
+
+        // الإعدادات المحلية الخاصة بكل حاسبة (لا تتعارض مع السحابة)
+        const LOCAL_PREFS_KEY = 'pledge_terminal_prefs_v2';
+        let localPrefs = {
+            workspaceId: 'default',
+            terminalName: 'حاسبة 1',
+            pledgeTypes: [...DEFAULT_PLEDGE_TYPES]
+        };
+
+        // الإعدادات المركزية المشتركة عبر السحابة (يتم مزامنتها بين جميع الحاسبات)
+        let centralConfig = {
+            orgName: 'الإدارة العامة - قسم الشؤون الإدارية والقانونية',
+            prefix: new Date().getFullYear().toString(),
+            nextSeq: 1
+        };
+
+        let records = [];
+        let recordToDeleteId = null;
+
+        // --- بدء التشغيل ---
+        async function initApp() {
+            loadLocalPrefs();
+            updateLocalUI();
+            setTodayDate();
+            populateDatalist();
+            updateSerialInput();
+
+            if (!firebaseConfig) {
+                setSyncStatus('offline', 'وضع محلي (لم يتم العثور على إعدادات السحابة)');
+                return;
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // المصادقة أولاً قبل أي عملية قراءة أو كتابة في Firestore
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
+                } else {
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
+                }
+
+                // بدء الاستماع اللحظي للبيانات المركزية
+                subscribeToWorkspace(localPrefs.workspaceId);
+
+            } catch (error) {
+                console.error("خطأ في الاتصال بالسحابة:", error);
+                setSyncStatus('error', 'تعذر الاتصال بالسحابة');
+                showToast('حدث خطأ أثناء الاتصال بقاعدة البيانات السحابية', 'error');
+            }
+        }
+
+        // --- الاشتراك في غرفة العمل المشتركة (Workspace) ---
+        function subscribeToWorkspace(workspaceId) {
+            if (!currentUser || !db) return;
+
+            // إلغاء أي اشتراك سابق عند تغيير رمز المؤسسة
+            if (unsubscribeRecords) unsubscribeRecords();
+            if (unsubscribeConfig) unsubscribeConfig();
+
+            isInitialLoad = true;
+            setSyncStatus('connecting', 'جاري مزامنة السجلات...');
+
+            const cleanWorkspace = sanitizeWorkspaceId(workspaceId);
+            const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', `pledges_config_${cleanWorkspace}`, 'main');
+            const recordsColRef = collection(db, 'artifacts', appId, 'public', 'data', `pledges_records_${cleanWorkspace}`);
+
+            // 1. الاستماع اللحظي للعداد المركزي وإعدادات المؤسسة
+            unsubscribeConfig = onSnapshot(configDocRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    centralConfig = {
+                        orgName: data.orgName || centralConfig.orgName,
+                        prefix: data.prefix !== undefined ? data.prefix : centralConfig.prefix,
+                        nextSeq: typeof data.nextSeq === 'number' ? data.nextSeq : 1
+                    };
+                } else {
+                    // إنشاء وثيقة الإعدادات المركزية لأول مرة لهذه الغرفة
+                    try {
+                        await setDoc(configDocRef, centralConfig);
+                    } catch (e) {
+                        console.error("خطأ في تهيئة العداد المركزي:", e);
+                    }
+                }
+                updateSerialInput();
+                updateStats();
+            }, (error) => {
+                console.error("خطأ في مزامنة العداد المركزي:", error);
+                setSyncStatus('error', 'انقطع الاتصال بالعداد');
+            });
+
+            // 2. الاستماع اللحظي لسجلات التعهدات من جميع الحاسبات
+            unsubscribeRecords = onSnapshot(recordsColRef, (snapshot) => {
+                const fetchedRecords = [];
+                snapshot.forEach((docItem) => {
+                    fetchedRecords.push({ id: docItem.id, ...docItem.data() });
+                });
+
+                // الترتيب تنازلياً في الذاكرة حسب الرقم التسلسلي أو وقت الإنشاء (بدون orderBy في الاستعلام)
+                fetchedRecords.sort((a, b) => {
+                    if ((b.seqNumber || 0) !== (a.seqNumber || 0)) {
+                        return (b.seqNumber || 0) - (a.seqNumber || 0);
+                    }
+                    return (b.createdAt || '').localeCompare(a.createdAt || '');
+                });
+
+                // إشعار فوري إذا تم إضافة سجل جديد من حاسبة أخرى
+                if (!isInitialLoad) {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const newRec = change.doc.data();
+                            if (newRec.terminalName && newRec.terminalName !== localPrefs.terminalName) {
+                                showToast(`صادر جديد (${newRec.serialNumber}) أُضيف من: ${newRec.terminalName}`);
+                            }
+                        }
+                    });
+                }
+
+                records = fetchedRecords;
+                isInitialLoad = false;
+                setSyncStatus('connected', 'متصل • مزامنة لحظية نشطة');
+                renderTable();
+                updateStats();
+            }, (error) => {
+                console.error("خطأ في مزامنة السجلات:", error);
+                setSyncStatus('error', 'خطأ في المزامنة');
+            });
+        }
+
+        // --- حفظ سجل جديد باستخدام Transaction لضمان عدم تكرار رقم الصادر أبداً ---
+        document.getElementById('pledgeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!currentUser || !db) {
+                showToast('يرجى الانتظار لحين اكتمال الاتصال بالسحابة', 'error');
+                return;
+            }
+
+            const editId = document.getElementById('editId').value;
+            const personName = document.getElementById('personName').value.trim();
+            const pledgeType = document.getElementById('pledgeType').value.trim();
+            const pledgeDate = document.getElementById('pledgeDate').value;
+            const terminalName = document.getElementById('terminalInput').value.trim() || localPrefs.terminalName;
+            const notes = document.getElementById('notes').value.trim();
+
+            if (!personName || !pledgeType || !pledgeDate) {
+                showToast('يرجى ملء جميع الحقول المطلوبة', 'error');
+                return;
+            }
+
+            // حفظ اسم الحاسبة محلياً إذا قام المستخدم بتعديله في النموذج
+            if (terminalName !== localPrefs.terminalName) {
+                localPrefs.terminalName = terminalName;
+                saveLocalPrefs();
+                updateLocalUI();
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            const originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>جاري الحفظ والمزامنة...</span>';
+
+            const cleanWorkspace = sanitizeWorkspaceId(localPrefs.workspaceId);
+
+            try {
+                if (editId) {
+                    // تعديل سجل موجود في السحابة
+                    const recordDocRef = doc(db, 'artifacts', appId, 'public', 'data', `pledges_records_${cleanWorkspace}`, editId);
+                    await updateDoc(recordDocRef, {
+                        personName,
+                        pledgeType,
+                        pledgeDate,
+                        terminalName,
+                        notes,
+                        updatedAt: new Date().toISOString()
+                    });
+                    showToast('تم تحديث التعهد ومزامنته مع جميع الحاسبات');
+                } else {
+                    // معاملة ذرية (Transaction) لقراءة الرقم التسلسلي المركزي وزيادته وإصدار السجل في خطوة واحدة
+                    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', `pledges_config_${cleanWorkspace}`, 'main');
+                    const newRecordId = 'rec_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+                    const newRecordRef = doc(db, 'artifacts', appId, 'public', 'data', `pledges_records_${cleanWorkspace}`, newRecordId);
+
+                    let issuedSerial = '';
+
+                    await runTransaction(db, async (transaction) => {
+                        const configSnap = await transaction.get(configDocRef);
+                        let currentSeq = 1;
+                        let currentPrefix = centralConfig.prefix;
+                        let currentOrgName = centralConfig.orgName;
+
+                        if (configSnap.exists()) {
+                            const data = configSnap.data();
+                            currentSeq = typeof data.nextSeq === 'number' ? data.nextSeq : 1;
+                            currentPrefix = data.prefix !== undefined ? data.prefix : currentPrefix;
+                            currentOrgName = data.orgName || currentOrgName;
+                        }
+
+                        issuedSerial = formatSerialNumber(currentPrefix, currentSeq);
+
+                        // 1. تحديث العداد المركزي للرقم التالي
+                        transaction.set(configDocRef, {
+                            orgName: currentOrgName,
+                            prefix: currentPrefix,
+                            nextSeq: currentSeq + 1
+                        }, { merge: true });
+
+                        // 2. إنشاء سجل التعهد بالرقم الصادر المحجوز
+                        transaction.set(newRecordRef, {
+                            serialNumber: issuedSerial,
+                            seqNumber: currentSeq,
+                            personName,
+                            pledgeType,
+                            pledgeDate,
+                            terminalName,
+                            notes,
+                            createdAt: new Date().toISOString(),
+                            createdByUid: currentUser.uid
+                        });
+                    });
+
+                    showToast(`تم إصدار التعهد بنجاح برقم صادر مركزي (${issuedSerial})`);
+                }
+
+                resetForm();
+            } catch (error) {
+                console.error("خطأ أثناء حفظ التعهد:", error);
+                showToast('حدث خطأ أثناء الحفظ في قاعدة البيانات، حاول مرة أخرى', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
+        });
+
+        // --- حذف سجل من قاعدة البيانات المركزية ---
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+            if (!recordToDeleteId || !currentUser || !db) return;
+
+            const cleanWorkspace = sanitizeWorkspaceId(localPrefs.workspaceId);
+            const recordDocRef = doc(db, 'artifacts', appId, 'public', 'data', `pledges_records_${cleanWorkspace}`, recordToDeleteId);
+
+            try {
+                await deleteDoc(recordDocRef);
+                if (document.getElementById('editId').value === recordToDeleteId) {
+                    resetForm();
+                }
+                showToast('تم حذف السجل من كافة الحاسبات');
+            } catch (error) {
+                console.error("خطأ أثناء الحذف:", error);
+                showToast('تعذر حذف السجل، تأكد من الاتصال بالإنترنت', 'error');
+            } finally {
+                closeDeleteModal();
+            }
+        });
+
+        // --- حفظ الإعدادات المركزية والمحلية ---
+        window.saveSettings = async function() {
+            const newWorkspace = document.getElementById('settingWorkspaceId').value.trim() || 'default';
+            const newTerminal = document.getElementById('settingTerminalName').value.trim() || 'حاسبة 1';
+            const orgName = document.getElementById('settingOrgName').value.trim() || 'الإدارة العامة';
+            const prefix = document.getElementById('settingPrefix').value.trim();
+            const nextSeq = parseInt(document.getElementById('settingNextSeq').value, 10);
+            const rawTypes = document.getElementById('settingPledgeTypes').value;
+
+            if (isNaN(nextSeq) || nextSeq < 1) {
+                showToast('يرجى إدخال رقم تسلسلي صحيح (1 فأكثر)', 'error');
+                return;
+            }
+
+            const workspaceChanged = sanitizeWorkspaceId(newWorkspace) !== sanitizeWorkspaceId(localPrefs.workspaceId);
+
+            // حفظ الإعدادات المحلية للحاسبة
+            localPrefs.workspaceId = newWorkspace;
+            localPrefs.terminalName = newTerminal;
+            localPrefs.pledgeTypes = rawTypes.split('\n').map(t => t.trim()).filter(t => t.length > 0);
+            if (localPrefs.pledgeTypes.length === 0) {
+                localPrefs.pledgeTypes = [...DEFAULT_PLEDGE_TYPES];
+            }
+            saveLocalPrefs();
+            updateLocalUI();
+            populateDatalist();
+
+            // تحديث الإعدادات المركزية في السحابة
+            if (currentUser && db) {
+                const cleanWorkspace = sanitizeWorkspaceId(newWorkspace);
+                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', `pledges_config_${cleanWorkspace}`, 'main');
+                try {
+                    await setDoc(configDocRef, {
+                        orgName,
+                        prefix,
+                        nextSeq
+                    }, { merge: true });
+
+                    if (workspaceChanged) {
+                        subscribeToWorkspace(newWorkspace);
+                    }
+                    showToast('تم حفظ وتحديث الإعدادات المركزية بنجاح');
+                } catch (e) {
+                    console.error("خطأ في حفظ الإعدادات السحابية:", e);
+                    showToast('تعذر حفظ الإعدادات في السحابة', 'error');
+                }
+            }
+
+            closeSettingsModal();
+        };
+
+        // --- دوال إدارة الواجهة والحالة ---
+        function loadLocalPrefs() {
+            try {
+                const saved = localStorage.getItem(LOCAL_PREFS_KEY);
+                if (saved) {
+                    localPrefs = { ...localPrefs, ...JSON.parse(saved) };
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function saveLocalPrefs() {
+            localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(localPrefs));
+        }
+
+        function updateLocalUI() {
+            document.getElementById('workspaceBadge').textContent = `غرفة: ${localPrefs.workspaceId}`;
+            document.getElementById('headerTerminalName').textContent = localPrefs.terminalName;
+            document.getElementById('terminalInput').value = localPrefs.terminalName;
+        }
+
+        function populateDatalist() {
+            const datalist = document.getElementById('pledgeTypesList');
+            datalist.innerHTML = '';
+            localPrefs.pledgeTypes.forEach(type => {
+                const opt = document.createElement('option');
+                opt.value = type;
+                datalist.appendChild(opt);
+            });
+        }
+
+        function setSyncStatus(state, text) {
+            const dot = document.getElementById('syncDot');
+            const label = document.getElementById('syncText');
+            label.textContent = text;
+
+            if (state === 'connected') {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+            } else if (state === 'connecting') {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+            } else {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
+            }
+        }
+
+        function sanitizeWorkspaceId(id) {
+            return (id || 'default').replace(/[^a-zA-Z0-9_\-\u0600-\u06FF]/g, '_').toLowerCase();
+        }
+
+        function formatSerialNumber(prefix, seq) {
+            return prefix ? `${prefix} / ${seq}` : `${seq}`;
+        }
+
+        function updateSerialInput() {
+            const editId = document.getElementById('editId').value;
+            if (!editId) {
+                document.getElementById('serialNumber').value = formatSerialNumber(centralConfig.prefix, centralConfig.nextSeq);
+            }
+        }
+
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('pledgeDate').value = today;
+        }
+
+        window.resetForm = function() {
+            document.getElementById('pledgeForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('terminalInput').value = localPrefs.terminalName;
+            document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-plus-circle text-gold-400"></i><span>تسجيل تعهد جديد</span>';
+            document.getElementById('editBadge').classList.add('hidden');
+            document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i><span>حفظ وإصدار الرقم</span>';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            setTodayDate();
+            updateSerialInput();
+        };
+
+        window.editRecord = function(id) {
+            const record = records.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('editId').value = record.id;
+            document.getElementById('serialNumber').value = record.serialNumber;
+            document.getElementById('personName').value = record.personName;
+            document.getElementById('pledgeType').value = record.pledgeType;
+            document.getElementById('pledgeDate').value = record.pledgeDate;
+            document.getElementById('terminalInput').value = record.terminalName || localPrefs.terminalName;
+            document.getElementById('notes').value = record.notes || '';
+
+            document.getElementById('formTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-gold-400"></i><span>تعديل بيانات التعهد</span>';
+            document.getElementById('editBadge').classList.remove('hidden');
+            document.getElementById('submitBtn').innerHTML = '<i class="fa-solid fa-save"></i><span>حفظ التعديلات</span>';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            document.getElementById('pledgeForm').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.renderTable = function() {
+            const tbody = document.getElementById('recordsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const filterDate = document.getElementById('filterDate').value;
+
+            const filtered = records.filter(rec => {
+                const matchesSearch = 
+                    (rec.personName || '').toLowerCase().includes(searchTerm) ||
+                    (rec.pledgeType || '').toLowerCase().includes(searchTerm) ||
+                    (rec.serialNumber || '').toLowerCase().includes(searchTerm) ||
+                    (rec.terminalName || '').toLowerCase().includes(searchTerm) ||
+                    (rec.notes || '').toLowerCase().includes(searchTerm);
+                
+                const matchesDate = filterDate ? rec.pledgeDate === filterDate : true;
+                return matchesSearch && matchesDate;
+            });
+
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-primary-50/40 transition group';
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-extrabold bg-amber-50 text-primary-900 border border-gold-500/40" dir="ltr">
+                            ${escapeHTML(rec.serialNumber)}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="font-bold text-slate-800">${escapeHTML(rec.personName)}</div>
+                        ${rec.notes ? `<div class="text-xs text-slate-500 truncate max-w-[210px]" title="${escapeHTML(rec.notes)}">${escapeHTML(rec.notes)}</div>` : ''}
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-block bg-primary-50 text-primary-800 border border-primary-100 text-xs font-medium px-2.5 py-1 rounded-md">
+                            ${escapeHTML(rec.pledgeType)}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <div class="text-slate-700 text-xs font-bold">${escapeHTML(rec.pledgeDate)}</div>
+                        ${rec.terminalName ? `<div class="text-[11px] text-slate-400 mt-0.5"><i class="fa-solid fa-desktop text-[10px] ml-1"></i>${escapeHTML(rec.terminalName)}</div>` : ''}
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="printRecord('${rec.id}')" title="طباعة سند تعهد رسمي A4"
+                                class="p-2 rounded-lg text-slate-600 hover:text-primary-700 hover:bg-primary-50 transition">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                            <button onclick="editRecord('${rec.id}')" title="تعديل"
+                                class="p-2 rounded-lg text-slate-600 hover:text-amber-600 hover:bg-amber-50 transition">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="promptDelete('${rec.id}')" title="حذف"
+                                class="p-2 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-50 transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.clearFilters = function() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterDate').value = '';
+            renderTable();
+        };
+
+        function updateStats() {
+            document.getElementById('statTotal').textContent = records.length;
+            document.getElementById('statNextNumber').textContent = formatSerialNumber(centralConfig.prefix, centralConfig.nextSeq);
+            
+            if (records.length > 0) {
+                document.getElementById('statLastIssuedHint').textContent = `آخر صادر مسجل: ${records[0].serialNumber}`;
+            } else {
+                document.getElementById('statLastIssuedHint').textContent = 'آخر صادر مسجل: لا يوجد';
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const todayCount = records.filter(r => r.pledgeDate === today).length;
+            document.getElementById('statToday').textContent = todayCount;
+
+            // حساب نوع التعهد الأكثر تكراراً
+            if (records.length > 0) {
+                const counts = {};
+                let topType = records[0].pledgeType;
+                let maxCount = 0;
+                records.forEach(r => {
+                    const t = r.pledgeType || 'غير محدد';
+                    counts[t] = (counts[t] || 0) + 1;
+                    if (counts[t] > maxCount) {
+                        maxCount = counts[t];
+                        topType = t;
+                    }
+                });
+                document.getElementById('statTopType').textContent = `${topType} (${maxCount})`;
+            } else {
+                document.getElementById('statTopType').textContent = 'لا يوجد';
+            }
+        }
+
+        window.promptDelete = function(id) {
+            recordToDeleteId = id;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        };
+
+        window.closeDeleteModal = function() {
+            recordToDeleteId = null;
+            document.getElementById('deleteModal').classList.add('hidden');
+        };
+
+        window.printRecord = function(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('printOrgName').textContent = centralConfig.orgName;
+            document.getElementById('printSerial').textContent = rec.serialNumber;
+            document.getElementById('printDate').textContent = rec.pledgeDate;
+            document.getElementById('printTypeBadge').textContent = `موضوع التعهد: ${rec.pledgeType}`;
+            document.getElementById('printPersonName').textContent = rec.personName;
+            document.getElementById('printPledgeType').textContent = rec.pledgeType;
+            document.getElementById('printSignName').textContent = rec.personName;
+            document.getElementById('printWorkspace').textContent = localPrefs.workspaceId;
+            document.getElementById('printTerminal').textContent = rec.terminalName || localPrefs.terminalName;
+
+            const notesSection = document.getElementById('printNotesSection');
+            if (rec.notes && rec.notes.trim() !== '') {
+                notesSection.classList.remove('hidden');
+                document.getElementById('printNotes').textContent = rec.notes;
+            } else {
+                notesSection.classList.add('hidden');
+            }
+
+            const printArea = document.getElementById('printArea');
+            printArea.classList.remove('hidden');
+            window.print();
+            printArea.classList.add('hidden');
+        };
+
+        window.exportToCSV = function() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const filterDate = document.getElementById('filterDate').value;
+
+            const dataToExport = records.filter(rec => {
+                const matchesSearch = 
+                    (rec.personName || '').toLowerCase().includes(searchTerm) ||
+                    (rec.pledgeType || '').toLowerCase().includes(searchTerm) ||
+                    (rec.serialNumber || '').toLowerCase().includes(searchTerm) ||
+                    (rec.terminalName || '').toLowerCase().includes(searchTerm) ||
+                    (rec.notes || '').toLowerCase().includes(searchTerm);
+                const matchesDate = filterDate ? rec.pledgeDate === filterDate : true;
+                return matchesSearch && matchesDate;
+            });
+
+            if (dataToExport.length === 0) {
+                showToast('لا توجد سجلات لتصديرها', 'error');
+                return;
+            }
+
+            let csvContent = '\uFEFF';
+            csvContent += 'رقم الصادر,اسم المتعهد,نوع التعهد,التاريخ,الحاسبة المدخلة,ملاحظات\n';
+
+            dataToExport.forEach(rec => {
+                const row = [
+                    `"${rec.serialNumber}"`,
+                    `"${(rec.personName || '').replace(/"/g, '""')}"`,
+                    `"${(rec.pledgeType || '').replace(/"/g, '""')}"`,
+                    `"${rec.pledgeDate}"`,
+                    `"${(rec.terminalName || '').replace(/"/g, '""')}"`,
+                    `"${(rec.notes || '').replace(/"/g, '""')}"`
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `سجل_التعهدات_${localPrefs.workspaceId}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(`تم تصدير (${dataToExport.length}) سجل إلى ملف Excel بنجاح`);
+        };
+
+        window.openSettingsModal = function() {
+            document.getElementById('settingWorkspaceId').value = localPrefs.workspaceId;
+            document.getElementById('settingTerminalName').value = localPrefs.terminalName;
+            document.getElementById('settingOrgName').value = centralConfig.orgName;
+            document.getElementById('settingPrefix').value = centralConfig.prefix;
+            document.getElementById('settingNextSeq').value = centralConfig.nextSeq;
+            document.getElementById('settingPledgeTypes').value = localPrefs.pledgeTypes.join('\n');
+            updatePreviewFormat();
+            document.getElementById('settingsModal').classList.remove('hidden');
+        };
+
+        window.closeSettingsModal = function() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        };
+
+        document.getElementById('settingPrefix').addEventListener('input', updatePreviewFormat);
+        document.getElementById('settingNextSeq').addEventListener('input', updatePreviewFormat);
+
+        function updatePreviewFormat() {
+            const p = document.getElementById('settingPrefix').value.trim();
+            const s = document.getElementById('settingNextSeq').value || 1;
+            document.getElementById('previewFormat').textContent = formatSerialNumber(p, s);
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag]));
+        }
+
+        let toastTimeout;
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastMessage');
+
+            msg.textContent = message;
+            if (type === 'error') {
+                icon.className = 'fa-solid fa-circle-exclamation text-red-400 text-lg';
+            } else {
+                icon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            }
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3500);
+        }
+
+        // تشغيل التطبيق عند تحميل الصفحة
+        initApp();
+    </script>
+</body>
+</html>
